@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-eduxrl"
+version = "0.1.0"
+description = "EduXRL — Adaptive Learning Path RL Environment. AI agents learn to teach simulated students grounded in cognitive science."
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core[core]>=0.2.2",
+    "fastapi>=0.115.0",
+    "pydantic>=2.0.0",
+    "uvicorn>=0.24.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+baseline = [
+    "openai>=1.0.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+server = "eduxrl.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["eduxrl", "eduxrl.server", "eduxrl.tasks", "eduxrl.graders"]
+package-dir = {
+    "eduxrl" = ".",
+    "eduxrl.server" = "server",
+    "eduxrl.tasks" = "tasks",
+    "eduxrl.graders" = "graders",
+}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
