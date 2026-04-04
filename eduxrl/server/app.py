@@ -45,7 +45,7 @@ if create_app is not None:
         StudentObservation,
         env_name="eduxrl",
     )
-    _override_paths = {("/reset", "POST"), ("/step", "POST"), ("/state", "GET"), ("/", "GET")}
+    _override_paths = {("/reset", "POST"), ("/step", "POST"), ("/state", "GET")}
     app.routes[:] = [
         r for r in app.routes
         if not (
@@ -82,8 +82,8 @@ def _obs_to_response(obs):
     return {"observation": obs_dict, "reward": obs.reward, "done": obs.done}
 
 
-@app.get("/")
-async def root():
+@app.get("/api-info")
+async def api_info():
     return {
         "name": "EduXRL",
         "description": "Adaptive Learning Path RL Environment — AI agents learn to teach simulated students grounded in cognitive science.",
