@@ -16,9 +16,9 @@ Dimensions:
 from typing import Any, Dict, List, Optional, Set
 
 try:
-    from ..tasks.task_definitions import TaskDefinition
+    from .task_definitions import TaskDefinition
 except ImportError:
-    from tasks.task_definitions import TaskDefinition
+    from .task_definitions import TaskDefinition
 
 
 # ---------------------------------------------------------------------------

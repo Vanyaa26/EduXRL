@@ -1,83 +1,99 @@
-"""
-EduXRL Client.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
-Client for connecting to a running EduXRL server.
-Extends HTTPEnvClient for type-safe interactions.
+"""Eduxrl Environment Client."""
 
-Usage:
-    >>> from eduxrl import EduXRLEnv
-    >>> from eduxrl.models import TeachingAction
-    >>>
-    >>> env = EduXRLEnv(base_url="http://localhost:8000")
-    >>> result = env.reset()
-    >>> result = env.step(TeachingAction(
-    ...     action_type="teach", topic="variables",
-    ...     format="exercise", difficulty="easy",
-    ... ))
-"""
+from typing import Dict
 
-from typing import Any, Dict
+from openenv.core import EnvClient
+from openenv.core.client_types import StepResult
+from openenv.core.env_server.types import State
 
-try:
-    from openenv.core import EnvClient as HTTPEnvClient
-    from openenv.core.env_client import StepResult
-except ImportError:
-    try:
-        from openenv_core.http_env_client import HTTPEnvClient
-        from openenv_core.client_types import StepResult
-    except ImportError:
-        HTTPEnvClient = None
-        StepResult = None
-
-if HTTPEnvClient is None or StepResult is None:
-    from dataclasses import dataclass
-    from typing import Generic, Optional, TypeVar
-    from abc import ABC, abstractmethod
-
-    ObsT = TypeVar("ObsT")
-
-    if StepResult is None:
-        @dataclass
-        class StepResult(Generic[ObsT]):
-            observation: ObsT
-            reward: Optional[float] = None
-            done: bool = False
-
-    if HTTPEnvClient is None:
-        class HTTPEnvClient(ABC):
-            def __init__(self, base_url: str, **kwargs):
-                self._base = base_url.rstrip("/")
-
-            @abstractmethod
-            def _step_payload(self, action) -> dict: ...
-
-            @abstractmethod
-            def _parse_result(self, payload: dict) -> StepResult: ...
-
-            @abstractmethod
-            def _parse_state(self, payload: dict): ...
-
-from .models import TeachingAction, StudentObservation, SessionState
+from .models import EduxrlAction, EduxrlObservation
 
 
-class EduXRLEnv(HTTPEnvClient):
-    """Client for the EduXRL Adaptive Learning Environment."""
+class EduxrlEnv(
+    EnvClient[EduxrlAction, EduxrlObservation, State]
+):
+    """
+    Client for the Eduxrl Environment.
 
-    def _step_payload(self, action: TeachingAction) -> dict:
-        if hasattr(action, "model_dump"):
-            return action.model_dump(exclude_none=True)
-        from dataclasses import asdict
-        d = asdict(action)
-        return {k: v for k, v in d.items() if v is not None}
+    This client maintains a persistent WebSocket connection to the environment server,
+    enabling efficient multi-step interactions with lower latency.
+    Each client instance has its own dedicated environment session on the server.
 
-    def _parse_result(self, payload: dict) -> StepResult:
+    Example:
+        >>> # Connect to a running server
+        >>> with EduxrlEnv(base_url="http://localhost:8000") as client:
+        ...     result = client.reset()
+        ...     print(result.observation.echoed_message)
+        ...
+        ...     result = client.step(EduxrlAction(message="Hello!"))
+        ...     print(result.observation.echoed_message)
+
+    Example with Docker:
+        >>> # Automatically start container and connect
+        >>> client = EduxrlEnv.from_docker_image("eduxrl-env:latest")
+        >>> try:
+        ...     result = client.reset()
+        ...     result = client.step(EduxrlAction(message="Test"))
+        ... finally:
+        ...     client.close()
+    """
+
+    def _step_payload(self, action: EduxrlAction) -> Dict:
+        """
+        Convert EduxrlAction to JSON payload for step message.
+
+        Args:
+            action: EduxrlAction instance
+
+        Returns:
+            Dictionary representation suitable for JSON encoding
+        """
+        return {
+            "message": action.message,
+        }
+
+    def _parse_result(self, payload: Dict) -> StepResult[EduxrlObservation]:
+        """
+        Parse server response into StepResult[EduxrlObservation].
+
+        Args:
+            payload: JSON response data from server
+
+        Returns:
+            StepResult with EduxrlObservation
+        """
         obs_data = payload.get("observation", {})
-        observation = StudentObservation(**obs_data)
+        observation = EduxrlObservation(
+            echoed_message=obs_data.get("echoed_message", ""),
+            message_length=obs_data.get("message_length", 0),
+            done=payload.get("done", False),
+            reward=payload.get("reward"),
+            metadata=obs_data.get("metadata", {}),
+        )
+
         return StepResult(
             observation=observation,
             reward=payload.get("reward"),
             done=payload.get("done", False),
         )
 
-    def _parse_state(self, payload: dict) -> SessionState:
-        return SessionState(**payload)
+    def _parse_state(self, payload: Dict) -> State:
+        """
+        Parse server response into State object.
+
+        Args:
+            payload: JSON response from state request
+
+        Returns:
+            State object with episode_id and step_count
+        """
+        return State(
+            episode_id=payload.get("episode_id"),
+            step_count=payload.get("step_count", 0),
+        )
