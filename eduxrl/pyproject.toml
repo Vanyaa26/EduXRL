@@ -30,12 +30,12 @@ server = "eduxrl.server.app:main"
 [tool.setuptools]
 include-package-data = true
 packages = ["eduxrl", "eduxrl.server", "eduxrl.tasks", "eduxrl.graders"]
-package-dir = {
-    "eduxrl" = ".",
-    "eduxrl.server" = "server",
-    "eduxrl.tasks" = "tasks",
-    "eduxrl.graders" = "graders",
-}
+
+[tool.setuptools.package-dir]
+eduxrl = "."
+"eduxrl.server" = "server"
+"eduxrl.tasks" = "tasks"
+"eduxrl.graders" = "graders"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
