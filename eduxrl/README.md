@@ -160,11 +160,13 @@ Each topic has content in 3 formats and quizzes at 3 difficulty levels. The curr
 ```bash
 cd eduxrl
 
-pip install -e ".[dev]"
+# Install dependencies
+uv sync
 
-uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
+# Start the server
+uv run server
 
-# In another terminal
+# In another terminal — run the LLM baseline
 export API_BASE_URL="https://router.huggingface.co/v1"
 export MODEL_NAME="Qwen/Qwen2.5-72B-Instruct"
 export HF_TOKEN="your-token"
@@ -178,6 +180,12 @@ docker build -t eduxrl:latest -f server/Dockerfile .
 docker run -d -p 8000:8000 eduxrl:latest
 
 curl http://localhost:8000/health
+```
+
+### Deploy to HF Spaces
+
+```bash
+openenv push --repo-id your-username/eduxrl
 ```
 
 ### API
@@ -227,25 +235,22 @@ Expected baseline performance with an LLM agent:
 
 ```
 eduxrl/
-├── models.py                  # TeachingAction, StudentObservation, SessionState
-├── client.py                  # EduXRL HTTP client
-├── inference.py               # LLM baseline agent (submission script)
-├── openenv.yaml               # OpenEnv manifest
-├── pyproject.toml             # Dependencies
-├── server/
-│   ├── app.py                 # FastAPI application
-│   ├── learning_environment.py # Core environment (reset/step/state)
-│   ├── student_model.py       # Simulated student (cognitive science models)
-│   ├── curriculum.py          # Topics, prerequisites, content
-│   ├── dashboard.py           # Interactive dashboard
-│   └── Dockerfile             # Container build
-├── tasks/
-│   ├── task_definitions.py    # Task registry
-│   ├── task1_steady_learner.py
-│   ├── task2_struggling_student.py
-│   └── task3_forgetting_student.py
-├── graders/
-│   └── learning_grader.py     # Reward computation
-└── tests/
-    └── ...
+├── __init__.py                     # Package exports
+├── models.py                       # EduxrlAction, EduxrlObservation (Pydantic)
+├── client.py                       # EduxrlEnv HTTP/WebSocket client
+├── inference.py                    # LLM baseline agent (submission script)
+├── openenv.yaml                    # OpenEnv manifest
+├── pyproject.toml                  # Dependencies
+└── server/
+    ├── app.py                      # FastAPI application (create_app + custom endpoints)
+    ├── eduxrl_environment.py       # EduxrlEnvironment — core reset/step/state
+    ├── student_model.py            # SimulatedStudent (cognitive science models)
+    ├── curriculum.py               # 10 Python topics with prerequisites
+    ├── learning_grader.py          # 5-dimension grading + per-step rewards
+    ├── task_definitions.py         # Task registry
+    ├── task1_steady_learner.py     # Easy: fresh student, 5 topics
+    ├── task2_struggling_student.py # Medium: gaps + motivation + style discovery
+    ├── task3_forgetting_student.py # Hard: multi-session with forgetting
+    ├── dashboard.py                # Landing page HTML
+    └── Dockerfile                  # Container build
 ```
